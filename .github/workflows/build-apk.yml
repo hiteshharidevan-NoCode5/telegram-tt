@@ -22,6 +22,9 @@ jobs:
         with:
           node-version: 20
 
+      - name: Remove Conflicting NPM Config
+        run: rm -f .npmrc
+
       - name: Install Capacitor CLI
         run: npm install -g @capacitor/cli @capacitor/core @capacitor/android
 
