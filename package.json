@@ -46,6 +46,7 @@
     "*.{css,scss}": "stylelint --cache --cache-location .cache/.stylelintcache --fix"
   },
   "devDependencies": {
+    "@capacitor/cli": "^6.0.0",
     "@actions/github": "^9.1.1",
     "@babel/core": "^8.0.6",
     "@babel/preset-env": "^8.0.6",
@@ -108,6 +109,9 @@
     "vitest": "^5.0.1"
   },
   "dependencies": {
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/filesystem": "^6.0.0",
     "@cryptography/aes": "^0.1.1",
     "@tauri-apps/api": "^2.12.0",
     "@tauri-apps/plugin-notification": "^2.5.0",
