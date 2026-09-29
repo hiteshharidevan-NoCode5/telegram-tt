@@ -25,8 +25,8 @@ jobs:
       - name: Remove Conflicting NPM Config
         run: rm -f .npmrc
 
-      - name: Install Capacitor CLI
-        run: npm install -g @capacitor/cli @capacitor/core @capacitor/android
+      - name: Install Capacitor Locally in Project
+        run: npm install @capacitor/cli @capacitor/core @capacitor/android @capacitor/filesystem --legacy-peer-deps --ignore-scripts
 
       - name: Initialize Android Shell
         run: |
