@@ -39,17 +39,20 @@ jobs:
           sed -i 's|<string name="app_name">.*</string>|<string name="app_name">AltGram</string>|' android/app/src/main/res/values/strings.xml
           sed -i 's|<string name="title_activity_main">.*</string>|<string name="title_activity_main">AltGram</string>|' android/app/src/main/res/values/strings.xml
 
-          # 2. Hardcode android:label directly in AndroidManifest.xml
+          # 2. Hardcode android:label and ensure permissions in AndroidManifest.xml
           sed -i 's/android:label="[^"]*"/android:label="AltGram"/g' android/app/src/main/AndroidManifest.xml
+          sed -i 's|<application|<application android:requestLegacyExternalStorage="true"|g' android/app/src/main/AndroidManifest.xml
+          sed -i 's|</manifest>|    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />\n</manifest>|' android/app/src/main/AndroidManifest.xml
 
           # 3. Force HTML title in web distribution directory
           find dist public -name "*.html" -exec sed -i 's/<title>.*<\/title>/<title>AltGram<\/title>/g' {} + 2>/dev/null || true
 
-          # 4. Patch MainActivity.java
+          # 4. Patch MainActivity.java to write directly into ChromeOS general Downloads
           cat << 'EOF' > android/app/src/main/java/com/custom/telegramweb/MainActivity.java
           package com.custom.telegramweb;
 
           import android.content.ContentValues;
+          import android.media.MediaScannerConnection;
           import android.net.Uri;
           import android.os.Build;
           import android.os.Bundle;
@@ -73,7 +76,7 @@ jobs:
                   webView.addJavascriptInterface(new Object() {
                       @JavascriptInterface
                       public void getBase64FromBlobData(String base64Data, String filename) {
-                          convertBase64ToMediaAndSave(base64Data, filename);
+                          saveToChromeOSDownloads(base64Data, filename);
                       }
                   }, "AndroidBlobDownloader");
 
@@ -118,13 +121,14 @@ jobs:
                   webView.evaluateJavascript(js, null);
               }
 
-              private void convertBase64ToMediaAndSave(String base64Data, String filename) {
+              private void saveToChromeOSDownloads(String base64Data, String filename) {
                   try {
                       String cleanBase64 = base64Data.substring(base64Data.indexOf(",") + 1);
                       byte[] fileBytes = Base64.decode(cleanBase64, Base64.DEFAULT);
 
-                      OutputStream os = null;
+                      boolean savedSuccessfully = false;
 
+                      // Method 1: MediaStore API (Standard ChromeOS Android integration)
                       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                           ContentValues values = new ContentValues();
                           values.put(MediaStore.Downloads.DISPLAY_NAME, filename);
@@ -133,23 +137,39 @@ jobs:
 
                           Uri uri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
                           if (uri != null) {
-                              os = getContentResolver().openOutputStream(uri);
+                              OutputStream os = getContentResolver().openOutputStream(uri);
+                              if (os != null) {
+                                  os.write(fileBytes);
+                                  os.flush();
+                                  os.close();
+                                  savedSuccessfully = true;
+                              }
                           }
-                      } else {
-                          File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-                          if (!downloadDir.exists()) downloadDir.mkdirs();
-                          File targetFile = new File(downloadDir, filename);
-                          os = new FileOutputStream(targetFile);
                       }
 
-                      if (os != null) {
-                          os.write(fileBytes);
-                          os.flush();
-                          os.close();
-                          runOnUiThread(() -> Toast.makeText(getApplicationContext(), "Saved to Downloads: " + filename, Toast.LENGTH_LONG).show());
-                      } else {
-                          throw new Exception("Unable to create output stream");
+                      // Method 2: Direct path fallback to /storage/emulated/0/Download
+                      if (!savedSuccessfully) {
+                          File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                          if (!downloadDir.exists()) {
+                              downloadDir.mkdirs();
+                          }
+                          File targetFile = new File(downloadDir, filename);
+                          FileOutputStream fos = new FileOutputStream(targetFile);
+                          fos.write(fileBytes);
+                          fos.flush();
+                          fos.close();
+
+                          // Force ChromeOS Files app to index the new file immediately
+                          MediaScannerConnection.scanFile(
+                              getApplicationContext(),
+                              new String[]{targetFile.getAbsolutePath()},
+                              null,
+                              null
+                          );
+                          savedSuccessfully = true;
                       }
+
+                      runOnUiThread(() -> Toast.makeText(getApplicationContext(), "Saved to ChromeOS Downloads: " + filename, Toast.LENGTH_LONG).show());
                   } catch (Exception e) {
                       runOnUiThread(() -> Toast.makeText(getApplicationContext(), "Save error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
                   }
