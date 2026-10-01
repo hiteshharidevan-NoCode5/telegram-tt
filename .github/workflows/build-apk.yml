@@ -45,19 +45,19 @@ jobs:
           # 3. Force HTML title in web distribution directory
           find dist public -name "*.html" -exec sed -i 's/<title>.*<\/title>/<title>AltGram<\/title>/g' {} + 2>/dev/null || true
 
-          # 4. Patch MainActivity.java with DOM Blob Interception & ExternalFilesDir Saving
+          # 4. Patch MainActivity.java
           cat << 'EOF' > android/app/src/main/java/com/custom/telegramweb/MainActivity.java
           package com.custom.telegramweb;
 
           import android.os.Bundle;
           import android.util.Base64;
           import android.webkit.JavascriptInterface;
-          import android.webkit.ValueCallback;
           import android.webkit.WebView;
           import android.widget.Toast;
           import com.getcapacitor.BridgeActivity;
           import java.io.File;
           import java.io.FileOutputStream;
+          import java.io.IOException;
 
           public class MainActivity extends BridgeActivity {
               @Override
@@ -65,8 +65,6 @@ jobs:
                   super.onCreate(savedInstanceState);
 
                   WebView webView = this.getBridge().getWebView();
-
-                  // Register the native download bridge
                   webView.addJavascriptInterface(new Object() {
                       @JavascriptInterface
                       public void getBase64FromBlobData(String base64Data, String filename) {
@@ -74,7 +72,6 @@ jobs:
                       }
                   }, "AndroidBlobDownloader");
 
-                  // Intercept anchor clicks when web contents load
                   webView.post(() -> injectBlobInterceptor(webView));
               }
 
@@ -138,7 +135,7 @@ jobs:
                   }
               }
           }
-          EOF   
+          EOF
 
       - name: Compile Debug APK
         run: |
