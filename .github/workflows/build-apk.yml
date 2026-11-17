@@ -33,26 +33,26 @@ jobs:
           npx cap add android
           npx cap sync android
 
-      - name: Configure App Name, Permissions & Downloader
+      - name: Configure App Name, NuzEPpr Bridge & Back Navigation
         run: |
           # 1. Update Android string resources
           sed -i 's|<string name="app_name">.*</string>|<string name="app_name">AltGram</string>|' android/app/src/main/res/values/strings.xml
           sed -i 's|<string name="title_activity_main">.*</string>|<string name="title_activity_main">AltGram</string>|' android/app/src/main/res/values/strings.xml
 
-          # 2. Hardcode android:label and ensure permissions in AndroidManifest.xml
+          # 2. Hardcode android:label and add <queries> visibility for NuzEPpr (Android 11+)
           sed -i 's/android:label="[^"]*"/android:label="AltGram"/g' android/app/src/main/AndroidManifest.xml
-          sed -i 's|<application|<application android:requestLegacyExternalStorage="true"|g' android/app/src/main/AndroidManifest.xml
-          sed -i 's|</manifest>|    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />\n</manifest>|' android/app/src/main/AndroidManifest.xml
+          sed -i 's|</manifest>|    <queries>\n        <package android:name="com.example.epaper_reader" />\n        <intent>\n            <action android:name="android.intent.action.VIEW" />\n            <data android:mimeType="application/pdf" />\n        </intent>\n    </queries>\n</manifest>|' android/app/src/main/AndroidManifest.xml
 
           # 3. Force HTML title in web distribution directory
           find dist public -name "*.html" -exec sed -i 's/<title>.*<\/title>/<title>AltGram<\/title>/g' {} + 2>/dev/null || true
 
-          # 4. Patch MainActivity.java to write directly into ChromeOS general Downloads
-          cat << 'EOF' > android/app/src/main/java/com/custom/telegramweb/MainActivity.java
+          # 4. Patch MainActivity.java (Public Downloads + Direct NuzEPpr Launch + Hardware Back)
+          cat << 'JAVAEOF' > android/app/src/main/java/com/custom/telegramweb/MainActivity.java
           package com.custom.telegramweb;
 
+          import android.content.ActivityNotFoundException;
           import android.content.ContentValues;
-          import android.media.MediaScannerConnection;
+          import android.content.Intent;
           import android.net.Uri;
           import android.os.Build;
           import android.os.Bundle;
@@ -62,12 +62,16 @@ jobs:
           import android.webkit.JavascriptInterface;
           import android.webkit.WebView;
           import android.widget.Toast;
+          import androidx.activity.OnBackPressedCallback;
+          import androidx.core.content.FileProvider;
           import com.getcapacitor.BridgeActivity;
           import java.io.File;
           import java.io.FileOutputStream;
           import java.io.OutputStream;
 
           public class MainActivity extends BridgeActivity {
+              private static final String NUZEPPR_PACKAGE = "com.example.epaper_reader";
+
               @Override
               public void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
@@ -76,11 +80,38 @@ jobs:
                   webView.addJavascriptInterface(new Object() {
                       @JavascriptInterface
                       public void getBase64FromBlobData(String base64Data, String filename) {
-                          saveToChromeOSDownloads(base64Data, filename);
+                          saveAndOpenInNuzEPpr(base64Data, filename);
                       }
                   }, "AndroidBlobDownloader");
 
                   webView.post(() -> injectBlobInterceptor(webView));
+
+                  getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+                      @Override
+                      public void handleOnBackPressed() {
+                          WebView wv = getBridge().getWebView();
+                          if (wv != null) {
+                              String backJs = "(function() {" +
+                                      "  var closeBtn = document.querySelector('.modal-dialog button[aria-label=\"Close\"], .MediaViewer button[aria-label=\"Close\"]');" +
+                                      "  if (closeBtn) { closeBtn.click(); return 'handled'; }" +
+                                      "  var backBtn = document.querySelector('#MiddleColumn button[aria-label=\"Back\"], .left-header button[aria-label=\"Back\"], button.Button.smaller.translucent[aria-label=\"Back\"]');" +
+                                      "  if (backBtn) { backBtn.click(); return 'handled'; }" +
+                                      "  return 'exit';" +
+                                      "})();";
+                              wv.evaluateJavascript(backJs, result -> {
+                                  if (result != null && result.contains("handled")) {
+                                      // Handled inside Telegram Web
+                                  } else if (wv.canGoBack()) {
+                                      wv.goBack();
+                                  } else {
+                                      moveTaskToBack(true);
+                                  }
+                              });
+                          } else {
+                              moveTaskToBack(true);
+                          }
+                      }
+                  });
               }
 
               @Override
@@ -99,7 +130,7 @@ jobs:
                           "  var origClick = HTMLAnchorElement.prototype.click;" +
                           "  HTMLAnchorElement.prototype.click = function() {" +
                           "    if (this.href && this.href.startsWith('blob:')) {" +
-                          "      var filename = this.download || ('file_' + Date.now());" +
+                          "      var filename = this.download || ('file_' + Date.now() + '.pdf');" +
                           "      var url = this.href;" +
                           "      var xhr = new XMLHttpRequest();" +
                           "      xhr.open('GET', url, true);" +
@@ -121,19 +152,19 @@ jobs:
                   webView.evaluateJavascript(js, null);
               }
 
-              private void saveToChromeOSDownloads(String base64Data, String filename) {
+              private void saveAndOpenInNuzEPpr(String base64Data, String filename) {
                   try {
                       String cleanBase64 = base64Data.substring(base64Data.indexOf(",") + 1);
                       byte[] fileBytes = Base64.decode(cleanBase64, Base64.DEFAULT);
 
-                      boolean savedSuccessfully = false;
+                      String mimeType = filename.toLowerCase().endsWith(".pdf") ? "application/pdf" : "application/octet-stream";
+                      Uri openUri = null;
 
-                      // Method 1: MediaStore API (Standard ChromeOS Android integration)
                       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                           ContentValues values = new ContentValues();
                           values.put(MediaStore.Downloads.DISPLAY_NAME, filename);
-                          values.put(MediaStore.Downloads.MIME_TYPE, filename.endsWith(".pdf") ? "application/pdf" : "application/octet-stream");
-                          values.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
+                          values.put(MediaStore.Downloads.MIME_TYPE, mimeType);
+                          values.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/AltGram");
 
                           Uri uri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
                           if (uri != null) {
@@ -142,40 +173,44 @@ jobs:
                                   os.write(fileBytes);
                                   os.flush();
                                   os.close();
-                                  savedSuccessfully = true;
+                                  openUri = uri;
                               }
                           }
-                      }
-
-                      // Method 2: Direct path fallback to /storage/emulated/0/Download
-                      if (!savedSuccessfully) {
-                          File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-                          if (!downloadDir.exists()) {
-                              downloadDir.mkdirs();
-                          }
+                      } else {
+                          File downloadDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "AltGram");
+                          if (!downloadDir.exists()) downloadDir.mkdirs();
                           File targetFile = new File(downloadDir, filename);
                           FileOutputStream fos = new FileOutputStream(targetFile);
                           fos.write(fileBytes);
                           fos.flush();
                           fos.close();
-
-                          // Force ChromeOS Files app to index the new file immediately
-                          MediaScannerConnection.scanFile(
-                              getApplicationContext(),
-                              new String[]{targetFile.getAbsolutePath()},
-                              null,
-                              null
-                          );
-                          savedSuccessfully = true;
+                          openUri = FileProvider.getUriForFile(this, getApplicationContext().getPackageName() + ".fileprovider", targetFile);
                       }
 
-                      runOnUiThread(() -> Toast.makeText(getApplicationContext(), "Saved to ChromeOS Downloads: " + filename, Toast.LENGTH_LONG).show());
+                      if (openUri != null) {
+                          final Uri finalUri = openUri;
+                          runOnUiThread(() -> {
+                              Intent directIntent = new Intent(Intent.ACTION_VIEW);
+                              directIntent.setDataAndType(finalUri, mimeType);
+                              directIntent.setPackage(NUZEPPR_PACKAGE);
+                              directIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+
+                              try {
+                                  startActivity(directIntent);
+                              } catch (ActivityNotFoundException e) {
+                                  Intent fallback = new Intent(Intent.ACTION_VIEW);
+                                  fallback.setDataAndType(finalUri, mimeType);
+                                  fallback.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+                                  startActivity(Intent.createChooser(fallback, "Open ePaper with"));
+                              }
+                          });
+                      }
                   } catch (Exception e) {
-                      runOnUiThread(() -> Toast.makeText(getApplicationContext(), "Save error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                      runOnUiThread(() -> Toast.makeText(getApplicationContext(), "Save error: " + e.getMessage(), Toast.LENGTH_LONG).show());
                   }
               }
           }
-          EOF
+          JAVAEOF
 
       - name: Compile Debug APK
         run: |
