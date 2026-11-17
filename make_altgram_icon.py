@@ -52,7 +52,11 @@ def render_monogram(canvas_sz, mono=False):
 
     return img.resize((canvas_sz, canvas_sz), Image.LANCZOS)
 
+import glob
 res = "android/app/src/main/res"
+for f in glob.glob(f"{res}/drawable*/ic_launcher*.xml") + glob.glob(f"{res}/mipmap-anydpi*/ic_launcher*.xml"):
+    os.remove(f)
+
 for d, sz, fg_sz in [
     ("mdpi", 48, 108),
     ("hdpi", 72, 162),
