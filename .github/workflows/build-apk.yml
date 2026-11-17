@@ -46,6 +46,9 @@ jobs:
           # 3. Force HTML title in web distribution directory
           find dist public -name "*.html" -exec sed -i 's/<title>.*<\/title>/<title>AltGram<\/title>/g' {} + 2>/dev/null || true
 
+          # 3b. Generate Adaptive AltGram Launcher Icon
+          pip install pillow && python3 make_altgram_icon.py
+
           # 4. Patch MainActivity.java (Public Downloads + Direct NuzEPpr Launch + Hardware Back)
           cat << 'JAVAEOF' > android/app/src/main/java/com/custom/telegramweb/MainActivity.java
           package com.custom.telegramweb;
