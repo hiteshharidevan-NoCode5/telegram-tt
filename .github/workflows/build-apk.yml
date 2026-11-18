@@ -229,6 +229,7 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
+          python3 patch_insets.py
           ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK
