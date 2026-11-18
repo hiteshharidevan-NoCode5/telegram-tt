@@ -86,10 +86,9 @@ jobs:
                           androidx.core.view.WindowInsetsCompat.Type.displayCutout()
                       );
                       if (getBridge() != null && getBridge().getWebView() != null) {
-                          getBridge().getWebView().setPadding(insets.left, insets.top, insets.right, insets.bottom);
+                          android.view.View wv = getBridge().getWebView(); android.view.ViewGroup.MarginLayoutParams mlp = (android.view.ViewGroup.MarginLayoutParams) wv.getLayoutParams(); mlp.setMargins(insets.left, insets.top, insets.right, insets.bottom); wv.setLayoutParams(mlp);
                       }
-                      return windowInsets;
-                  });
+                      return androidx.core.view.WindowInsetsCompat.CONSUMED; }); androidx.core.view.ViewCompat.requestApplyInsets(getWindow().getDecorView());
 
                   WebView webView = this.getBridge().getWebView();
                   webView.addJavascriptInterface(new Object() {
