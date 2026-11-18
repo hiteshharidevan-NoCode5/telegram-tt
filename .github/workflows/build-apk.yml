@@ -1,6 +1,8 @@
 name: Build Android APK
 
 on:
+  push:
+    branches: [ master ]
   workflow_dispatch:
 
 jobs:
@@ -229,7 +231,6 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
-          python3 patch_insets.py
           ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK
