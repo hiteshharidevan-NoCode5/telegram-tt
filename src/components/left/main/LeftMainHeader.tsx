@@ -1,3 +1,4 @@
+import EpaperManager from '../../common/EpaperManager';
 import type { FC } from '../../../lib/teact/teact';
 import {
   memo, useEffect, useMemo,
@@ -300,6 +301,7 @@ const LeftMainHeader = ({
             iconName="unlock"
           />
         )}
+        <EpaperManager />
         <ShowTransition
           isOpen={connectionStatusPosition === 'overlay'}
           isCustom
