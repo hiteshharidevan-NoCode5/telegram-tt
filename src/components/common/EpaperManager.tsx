@@ -1,5 +1,4 @@
 import React, { memo, useEffect, useState } from '../../lib/teact/teact';
-import Portal from '../ui/Portal';
 import { getGlobal } from '../../global';
 import {
   getEpaperConfig,
@@ -64,12 +63,12 @@ const EpaperManager = () => {
   };
 
   return (
-    <Portal>
-      <button type="button" onClick={() => setIsOpen(true)} title="E-Paper Auto-Downloader" style={`position:fixed;top:12px;right:14px;z-index:9998;background:${config.enabled ? "#1a73e8" : "#5f6368"};color:#fff;border:none;border-radius:16px;padding:5px 11px;font-size:13px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,0.35);cursor:pointer;`}>
+    <>
+      <button type="button" onClick={() => setIsOpen(true)} title="E-Paper Auto-Downloader" style={`position:fixed;top:12px;right:14px;z-index:2147483646;background:${config.enabled ? "#1a73e8" : "#5f6368"};color:#fff;border:none;border-radius:16px;padding:5px 11px;font-size:13px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,0.35);cursor:pointer;`}>
         📰 {config.channelIds.length > 0 ? config.channelIds.length : ""}
       </button>
       {isOpen && (
-        <div style="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;">
+        <div style="position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;">
           <div style="background:#1e1e1e;color:#f1f3f4;border-radius:14px;width:100%;max-width:420px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,0.6);font-family:sans-serif;">
             <div style="padding:14px 16px;border-bottom:1px solid #333;display:flex;justify-content:space-between;align-items:center;">
               <strong style="font-size:16px;">📰 E-Paper Auto-Downloader</strong>
@@ -105,7 +104,7 @@ const EpaperManager = () => {
           </div>
         </div>
       )}
-    </Portal>
+    </>
   );
 };
 
