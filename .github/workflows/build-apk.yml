@@ -22,14 +22,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Remove Conflicting NPM Config
         run: rm -f .npmrc
 
       - name: Install Dependencies & Build Web Bundle
         run: |
-          npm install --legacy-peer-deps --ignore-scripts
+          npm install --legacy-peer-deps
           npm install @capacitor/cli @capacitor/core @capacitor/android @capacitor/filesystem --legacy-peer-deps --ignore-scripts
           npm run build:production
 
