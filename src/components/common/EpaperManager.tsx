@@ -1,4 +1,5 @@
 import React, { memo, useEffect, useState } from '../../lib/teact/teact';
+import Portal from '../ui/Portal';
 import { getGlobal } from '../../global';
 import {
   getEpaperConfig,
@@ -63,253 +64,48 @@ const EpaperManager = () => {
   };
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => setIsOpen(true)}
-        title="E-Paper Auto-Downloader"
-        style={{
-          position: 'fixed',
-          top: '10px',
-          right: '54px',
-          zIndex: 9998,
-          background: config.enabled ? '#1a73e8' : '#5f6368',
-          color: '#fff',
-          border: 'none',
-          borderRadius: '16px',
-          padding: '4px 10px',
-          fontSize: '12px',
-          fontWeight: 600,
-          boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
-          cursor: 'pointer',
-        }}
-      >
-        📰 {config.channelIds.length > 0 ? config.channelIds.length : ''}
+    <Portal>
+      <button type="button" onClick={() => setIsOpen(true)} title="E-Paper Auto-Downloader" style={`position:fixed;top:12px;right:14px;z-index:9998;background:${config.enabled ? "#1a73e8" : "#5f6368"};color:#fff;border:none;border-radius:16px;padding:5px 11px;font-size:13px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,0.35);cursor:pointer;`}>
+        📰 {config.channelIds.length > 0 ? config.channelIds.length : ""}
       </button>
-
       {isOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 9999,
-            background: 'rgba(0,0,0,0.65)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '16px',
-          }}
-        >
-          <div
-            style={{
-              background: '#1e1e1e',
-              color: '#f1f3f4',
-              borderRadius: '14px',
-              width: '100%',
-              maxWidth: '440px',
-              maxHeight: '86vh',
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden',
-              boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
-            }}
-          >
-            <div
-              style={{
-                padding: '14px 16px',
-                borderBottom: '1px solid #333',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <strong style={{ fontSize: '16px' }}>📰 E-Paper Auto-Downloader</strong>
-              <button
-                type="button"
-                onClick={() => setIsOpen(false)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: '#aaa',
-                  fontSize: '20px',
-                  cursor: 'pointer',
-                }}
-              >
-                ✕
-              </button>
+        <div style="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;">
+          <div style="background:#1e1e1e;color:#f1f3f4;border-radius:14px;width:100%;max-width:420px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,0.6);font-family:sans-serif;">
+            <div style="padding:14px 16px;border-bottom:1px solid #333;display:flex;justify-content:space-between;align-items:center;">
+              <strong style="font-size:16px;">📰 E-Paper Auto-Downloader</strong>
+              <button type="button" onClick={() => setIsOpen(false)} style="background:transparent;border:none;color:#aaa;font-size:20px;cursor:pointer;">✕</button>
             </div>
-
-            <div style={{ padding: '14px 16px', overflowY: 'auto', flex: 1 }}>
-              <label
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: '12px',
-                  background: '#2a2a2a',
-                  padding: '10px 12px',
-                  borderRadius: '8px',
-                }}
-              >
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: '14px' }}>Morning Hourly Sync</div>
-                  <div style={{ fontSize: '12px', color: '#aaa' }}>
-                    Auto-checks every hour from 6:00 AM to 12:00 PM
-                  </div>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={config.enabled}
-                  onChange={(e: any) => {
-                    const next = { ...config, enabled: Boolean(e.target.checked) };
-                    setConfig(next);
-                    saveEpaperConfig(next);
-                  }}
-                />
+            <div style="padding:14px 16px;overflow-y:auto;flex:1;">
+              <label style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;background:#2a2a2a;padding:10px 12px;border-radius:8px;cursor:pointer;">
+                <div><div style="font-weight:600;font-size:14px;">Morning Hourly Sync</div><div style="font-size:12px;color:#aaa;">Auto-checks every hour 6 AM – 12 PM</div></div>
+                <input type="checkbox" checked={config.enabled} onChange={(e: any) => { const next = { ...config, enabled: Boolean(e.target.checked) }; setConfig(next); saveEpaperConfig(next); }} />
               </label>
-
-              <div style={{ marginBottom: '12px' }}>
-                <div style={{ fontSize: '12px', color: '#bbb', marginBottom: '4px' }}>
-                  Keyword Filter (optional, comma-separated):
-                </div>
-                <input
-                  type="text"
-                  placeholder="e.g. Hindu, Express, Ahmedabad (blank = all PDFs)"
-                  value={config.keywords}
-                  onInput={(e: any) => {
-                    const next = { ...config, keywords: e.target.value };
-                    setConfig(next);
-                    saveEpaperConfig(next);
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '8px 10px',
-                    borderRadius: '8px',
-                    border: '1px solid #444',
-                    background: '#121212',
-                    color: '#fff',
-                    fontSize: '13px',
-                  }}
-                />
+              <div style="margin-bottom:12px;">
+                <div style="font-size:12px;color:#bbb;margin-bottom:4px;">Keyword Filter (comma-separated):</div>
+                <input type="text" placeholder="e.g. Hindu, Express (blank = all PDFs)" value={config.keywords} onInput={(e: any) => { const next = { ...config, keywords: e.target.value }; setConfig(next); saveEpaperConfig(next); }} style="width:100%;box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1px solid #444;background:#121212;color:#fff;font-size:13px;" />
               </div>
-
-              <div style={{ marginBottom: '12px' }}>
-                <div style={{ fontSize: '12px', color: '#bbb', marginBottom: '6px' }}>
-                  Select Channels to Monitor ({config.channelIds.length} selected):
-                </div>
-                <input
-                  type="text"
-                  placeholder="Filter your channels..."
-                  value={search}
-                  onInput={(e: any) => setSearch(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '6px 10px',
-                    marginBottom: '6px',
-                    borderRadius: '8px',
-                    border: '1px solid #444',
-                    background: '#121212',
-                    color: '#fff',
-                    fontSize: '12px',
-                  }}
-                />
-                <div
-                  style={{
-                    maxHeight: '170px',
-                    overflowY: 'auto',
-                    border: '1px solid #333',
-                    borderRadius: '8px',
-                    background: '#161616',
-                  }}
-                >
-                  {filteredChannels.length === 0 ? (
-                    <div style={{ padding: '12px', fontSize: '12px', color: '#888' }}>
-                      No channels loaded yet. Open your chat list first so AltGram loads your channels.
-                    </div>
-                  ) : (
-                    filteredChannels.map((ch: any) => (
-                      <label
-                        key={ch.id}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          padding: '8px 10px',
-                          borderBottom: '1px solid #262626',
-                          fontSize: '13px',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={config.channelIds.includes(ch.id)}
-                          onChange={() => toggleChannel(ch.id)}
-                        />
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {ch.title}
-                        </span>
-                      </label>
-                    ))
-                  )}
+              <div style="margin-bottom:12px;">
+                <div style="font-size:12px;color:#bbb;margin-bottom:6px;">Select Channels ({config.channelIds.length} selected):</div>
+                <input type="text" placeholder="Filter channels..." value={search} onInput={(e: any) => setSearch(e.target.value)} style="width:100%;box-sizing:border-box;padding:7px 10px;margin-bottom:6px;border-radius:8px;border:1px solid #444;background:#121212;color:#fff;font-size:13px;" />
+                <div style="max-height:180px;overflow-y:auto;border:1px solid #333;border-radius:8px;background:#141414;">
+                  {filteredChannels.map((ch: any) => (
+                    <label key={ch.id} style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-bottom:1px solid #222;cursor:pointer;font-size:13px;">
+                      <input type="checkbox" checked={config.channelIds.includes(ch.id)} onChange={() => toggleChannel(ch.id)} />
+                      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{ch.title}</span>
+                    </label>
+                  ))}
                 </div>
               </div>
-
-              <button
-                type="button"
-                disabled={isSyncing}
-                onClick={handleSyncNow}
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  background: '#1a73e8',
-                  color: '#fff',
-                  fontWeight: 600,
-                  fontSize: '14px',
-                  cursor: 'pointer',
-                  marginBottom: '8px',
-                }}
-              >
-                {isSyncing ? 'Syncing...' : 'Sync Now (Download Today\'s PDFs)'}
-              </button>
-
-              {statusMsg && (
-                <div style={{ fontSize: '12px', color: '#8ab4f8', marginBottom: '10px' }}>
-                  {statusMsg}
-                </div>
-              )}
-
-              <div>
-                <div style={{ fontSize: '12px', color: '#bbb', marginBottom: '4px' }}>
-                  Recent Activity (Saved to Downloads/AltGram):
-                </div>
-                <div
-                  style={{
-                    maxHeight: '110px',
-                    overflowY: 'auto',
-                    background: '#121212',
-                    borderRadius: '8px',
-                    padding: '6px 8px',
-                    fontSize: '11px',
-                  }}
-                >
-                  {logs.length === 0 ? (
-                    <div style={{ color: '#777' }}>No e-papers downloaded yet.</div>
-                  ) : (
-                    logs.map((l, idx) => (
-                      <div key={idx} style={{ marginBottom: '4px', borderBottom: '1px solid #222', paddingBottom: '3px' }}>
-                        <strong>[{l.time}]</strong> {l.filename} — <span style={{ color: '#81c995' }}>{l.status}</span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
+              {statusMsg && <div style="margin-bottom:10px;padding:8px 10px;border-radius:8px;background:#263238;color:#80cbc4;font-size:12px;">{statusMsg}</div>}
+            </div>
+            <div style="padding:12px 16px;border-top:1px solid #333;display:flex;gap:10px;">
+              <button type="button" disabled={isSyncing} onClick={handleSyncNow} style="flex:1;background:#1a73e8;color:#fff;border:none;border-radius:8px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;">{isSyncing ? "Syncing..." : "Sync Now"}</button>
+              <button type="button" onClick={() => setIsOpen(false)} style="background:#333;color:#fff;border:none;border-radius:8px;padding:10px 14px;font-size:14px;cursor:pointer;">Close</button>
             </div>
           </div>
         </div>
       )}
-    </>
+    </Portal>
   );
 };
 
