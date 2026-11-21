@@ -1,3 +1,4 @@
+import { processEpaperMessage } from '../../../util/epaperDownloader';
 import type {
   ApiMediaExtendedPreview, ApiMessage, ApiReactions,
   ApiWebPage,
@@ -486,6 +487,10 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
         if (savedDialogId && !selectIsChatListed(global, savedDialogId, 'saved')) {
           actions.requestSavedDialogUpdate({ chatId: savedDialogId });
         }
+      }
+
+      if (!isLocal && !message.isOutgoing) {
+        void processEpaperMessage(chatId, newMessage, false);
       }
 
       if (!isLocal && message.ttlPeriod) {

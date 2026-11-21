@@ -27,8 +27,11 @@ jobs:
       - name: Remove Conflicting NPM Config
         run: rm -f .npmrc
 
-      - name: Install Capacitor Locally
-        run: npm install @capacitor/cli @capacitor/core @capacitor/android @capacitor/filesystem --legacy-peer-deps --ignore-scripts
+      - name: Install Dependencies & Build Web Bundle
+        run: |
+          npm install --legacy-peer-deps --ignore-scripts
+          npm install @capacitor/cli @capacitor/core @capacitor/android @capacitor/filesystem --legacy-peer-deps --ignore-scripts
+          npm run build:production
 
       - name: Initialize Android Shell
         run: |
@@ -94,9 +97,14 @@ jobs:
                   webView.addJavascriptInterface(new Object() {
                       @JavascriptInterface
                       public void getBase64FromBlobData(String base64Data, String filename) {
-                          saveAndOpenInNuzEPpr(base64Data, filename);
+                          savePdfToDownloads(base64Data, filename, true);
+                      }
+                      @JavascriptInterface
+                      public void saveSilentEpaper(String base64Data, String filename) {
+                          savePdfToDownloads(base64Data, filename, false);
                       }
                   }, "AndroidBlobDownloader");
+                  EpaperSyncReceiver.scheduleMorningAlarms(this);
 
                   webView.post(() -> injectBlobInterceptor(webView));
 
@@ -166,7 +174,7 @@ jobs:
                   webView.evaluateJavascript(js, null);
               }
 
-              private void saveAndOpenInNuzEPpr(String base64Data, String filename) {
+              private void savePdfToDownloads(String base64Data, String filename, boolean openViewer) {
                   try {
                       String cleanBase64 = base64Data.substring(base64Data.indexOf(",") + 1);
                       byte[] fileBytes = Base64.decode(cleanBase64, Base64.DEFAULT);
@@ -201,7 +209,9 @@ jobs:
                           openUri = FileProvider.getUriForFile(this, getApplicationContext().getPackageName() + ".fileprovider", targetFile);
                       }
 
-                      if (openUri != null) {
+                      if (openUri != null && !openViewer) {
+                          runOnUiThread(() -> Toast.makeText(getApplicationContext(), "Saved ePaper: " + filename, Toast.LENGTH_SHORT).show());
+                      } else if (openUri != null && openViewer) {
                           final Uri finalUri = openUri;
                           runOnUiThread(() -> {
                               Intent directIntent = new Intent(Intent.ACTION_VIEW);
@@ -226,15 +236,71 @@ jobs:
           }
           JAVAEOF
 
+          cat << 'RECEIVEREOF' > android/app/src/main/java/com/custom/telegramweb/EpaperSyncReceiver.java
+          package com.custom.telegramweb;
+
+          import android.app.AlarmManager;
+          import android.app.PendingIntent;
+          import android.content.BroadcastReceiver;
+          import android.content.Context;
+          import android.content.Intent;
+          import android.os.Build;
+          import java.util.Calendar;
+
+          public class EpaperSyncReceiver extends BroadcastReceiver {
+              @Override
+              public void onReceive(Context context, Intent intent) {
+                  int hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
+                  if (hour >= 6 && hour <= 12) {
+                      Intent launch = new Intent(context, MainActivity.class);
+                      launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                      launch.putExtra("epaper_sync", true);
+                      context.startActivity(launch);
+                  }
+                  scheduleMorningAlarms(context);
+              }
+
+              public static void scheduleMorningAlarms(Context context) {
+                  AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+                  if (am == null) return;
+                  Calendar now = Calendar.getInstance();
+                  Calendar next = Calendar.getInstance();
+                  next.set(Calendar.MINUTE, 2);
+                  next.set(Calendar.SECOND, 0);
+                  next.set(Calendar.MILLISECOND, 0);
+                  if (!next.after(now)) {
+                      next.add(Calendar.HOUR_OF_DAY, 1);
+                  }
+                  int h = next.get(Calendar.HOUR_OF_DAY);
+                  if (h < 6) {
+                      next.set(Calendar.HOUR_OF_DAY, 6);
+                  } else if (h > 12) {
+                      next.add(Calendar.DAY_OF_YEAR, 1);
+                      next.set(Calendar.HOUR_OF_DAY, 6);
+                  }
+                  Intent i = new Intent(context, EpaperSyncReceiver.class);
+                  int flags = PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0);
+                  PendingIntent pi = PendingIntent.getBroadcast(context, 6012, i, flags);
+                  am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next.getTimeInMillis(), pi);
+              }
+          }
+          RECEIVEREOF
+
+          sed -i 's|</application>|    <receiver android:name=".EpaperSyncReceiver" android:exported="false" />
+    </application>|' android/app/src/main/AndroidManifest.xml
+
       - name: Compile Debug APK
         run: |
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
 
+      - name: Rename APK to AltGram.apk
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk android/app/build/outputs/apk/debug/AltGram.apk
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: AltGram-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: AltGram.apk
+          path: android/app/build/outputs/apk/debug/AltGram.apk
           retention-days: 7
