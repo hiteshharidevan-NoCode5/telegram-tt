@@ -30,7 +30,7 @@ jobs:
       - name: Install Dependencies & Build Web Bundle
         run: |
           npm install --legacy-peer-deps
-          npm install @capacitor/cli @capacitor/core @capacitor/android @capacitor/filesystem highlight.js --legacy-peer-deps --ignore-scripts
+          npm install @capacitor/cli @capacitor/core @capacitor/android @capacitor/filesystem highlight.js @floating-ui/dom lowlight --legacy-peer-deps --ignore-scripts
           TELEGRAM_API_ID=2496 TELEGRAM_API_HASH=8da85b0d5bfe62527e5b244c209159c3 npm run build:production
 
       - name: Initialize Android Shell
