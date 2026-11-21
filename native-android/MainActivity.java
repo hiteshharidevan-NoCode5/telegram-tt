@@ -71,9 +71,9 @@ public class MainActivity extends BridgeActivity {
                 WebView wv = getBridge().getWebView();
                 if (wv != null) {
                     String backJs = "(function() {" +
-                            "  var closeBtn = document.querySelector('.modal-dialog button[aria-label="Close"], .MediaViewer button[aria-label="Close"]');" +
+                            "  var closeBtn = document.querySelector('.modal-dialog button[aria-label=\"Close\"], .MediaViewer button[aria-label=\"Close\"]');" +
                             "  if (closeBtn) { closeBtn.click(); return 'handled'; }" +
-                            "  var backBtn = document.querySelector('#MiddleColumn button[aria-label="Back"], .left-header button[aria-label="Back"], button.Button.smaller.translucent[aria-label="Back"]');" +
+                            "  var backBtn = document.querySelector('#MiddleColumn button[aria-label=\"Back\"], .left-header button[aria-label=\"Back\"], button.Button.smaller.translucent[aria-label=\"Back\"]');" +
                             "  if (backBtn) { backBtn.click(); return 'handled'; }" +
                             "  return 'exit';" +
                             "})();";
